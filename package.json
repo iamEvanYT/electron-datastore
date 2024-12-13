@@ -1,6 +1,6 @@
 {
   "name": "electron-datastore",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Simple and secure electron store with template-based data reconciliation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

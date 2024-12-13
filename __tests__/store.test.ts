@@ -153,6 +153,61 @@ test('Store', async (t) => {
     assert.deepEqual(store.get('theme'), template.theme);
   });
 
+  await t.test('should handle auto reconciliation', async (t) => {
+    await t.test('should not auto reconcile when disabled', () => {
+      // Create initial store with data
+      const store1 = new Store<TestConfig>({
+        name: 'test-config',
+        template,
+        cwd: testDir
+      });
+
+      store1.set('theme.primary', '#111111');
+
+      // Create new store with different template but auto reconcile disabled
+      const store2 = new Store<TestConfig>({
+        name: 'test-config',
+        template: {
+          ...template,
+          theme: {
+            ...template.theme,
+            primary: '#999999' // Different default
+          }
+        },
+        cwd: testDir,
+        autoReconcile: false
+      });
+
+      // Should keep existing value without reconciling
+      assert.equal(store2.get('theme.primary'), '#111111');
+    });
+
+    await t.test('should manually reconcile when needed', () => {
+      // Create store with auto reconcile disabled
+      const store = new Store<TestConfig>({
+        name: 'test-config',
+        template: {
+          ...template,
+          theme: {
+            ...template.theme,
+            primary: '#999999' // Different default
+          }
+        },
+        cwd: testDir,
+        autoReconcile: false
+      });
+
+      // Set some data that differs from template
+      store.set('theme.primary', '#111111');
+
+      // Manually reconcile
+      store.reconcile();
+
+      // Should now have the template value
+      assert.equal(store.get('theme.primary'), '#999999');
+    });
+  });
+
   await t.test('should encrypt and decrypt data', async (t) => {
     const encryptionKey = 'test-encryption-key';
 

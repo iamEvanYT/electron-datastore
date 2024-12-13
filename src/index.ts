@@ -9,6 +9,7 @@ export interface StoreOptions<T> {
   cwd?: string;
   encryptionKey?: string | Buffer | Uint8Array | DataView;
   accessPropertiesByDotNotation?: boolean;
+  autoReconcile?: boolean;
 }
 
 type PathImpl<T, Key extends keyof T> = Key extends string
@@ -34,8 +35,9 @@ export class Store<T extends Record<string, any>> {
   private data: T;
   private filePath: string;
   private encryptionKey?: string | Buffer | Uint8Array | DataView;
-  private template: T;
+  template: T;
   private accessPropertiesByDotNotation: boolean;
+  private autoReconcile: boolean;
 
   constructor(options: StoreOptions<T>) {
     this.template = options.template;
@@ -43,7 +45,17 @@ export class Store<T extends Record<string, any>> {
     const cwd = options.cwd ?? app.getPath('userData');
     this.filePath = path.join(cwd, `${options.name}.json`);
     this.accessPropertiesByDotNotation = options.accessPropertiesByDotNotation ?? true;
+    this.autoReconcile = options.autoReconcile ?? true;
     this.data = this.read();
+  }
+
+  /**
+   * Manually reconcile the current data with the template.
+   * This is useful when autoReconcile is disabled or when you want to force a reconciliation.
+   */
+  reconcile(): void {
+    this.data = { ...this.template };
+    this.write();
   }
 
   private hasEncryption(): boolean {
@@ -95,7 +107,7 @@ export class Store<T extends Record<string, any>> {
             ...value
           } as T[keyof T];
         } else {
-          result[templateKey] = value as T[keyof T];
+          result[templateKey] = this.template[templateKey] as T[keyof T];
         }
       }
     }
@@ -121,7 +133,7 @@ export class Store<T extends Record<string, any>> {
       }
 
       const parsedData = JSON.parse(data) as Partial<T>;
-      return this.reconcileWithTemplate(parsedData);
+      return this.autoReconcile ? this.reconcileWithTemplate(parsedData) : parsedData as T;
     } catch (error) {
       return this.template;
     }
