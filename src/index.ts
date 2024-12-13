@@ -3,12 +3,22 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
+/**
+ * Configuration options for the Store class.
+ * @template T The type of data to be stored
+ */
 export interface StoreOptions<T> {
+  /** The name of the store file (without extension) */
   name: string;
+  /** Template object that defines the structure and default values */
   template: T;
+  /** Custom working directory. Defaults to app.getPath('userData') */
   cwd?: string;
+  /** Optional encryption key for securing the stored data */
   encryptionKey?: string | Buffer | Uint8Array | DataView;
+  /** Whether to allow accessing nested properties using dot notation (e.g., 'theme.colors.primary'). Defaults to true */
   accessPropertiesByDotNotation?: boolean;
+  /** Whether to automatically reconcile data with template on load. Defaults to true */
   autoReconcile?: boolean;
 }
 
@@ -31,14 +41,53 @@ type PathValue<T, P extends Path<T>> = P extends `${infer Key}.${infer Rest}`
     ? T[P]
     : never;
 
+/**
+ * A type-safe store for electron apps with template-based data structure, dot notation access, and optional encryption.
+ * @template T The type of data to be stored, must be a record type
+ * @example
+ * ```typescript
+ * interface Config {
+ *   theme: {
+ *     primary: string;
+ *     dark: boolean;
+ *   };
+ * }
+ * 
+ * const store = new Store<Config>({
+ *   name: 'config',
+ *   template: {
+ *     theme: {
+ *       primary: '#000000',
+ *       dark: false
+ *     }
+ *   }
+ * });
+ * ```
+ */
 export class Store<T extends Record<string, any>> {
   private data: T;
   private filePath: string;
   private encryptionKey?: string | Buffer | Uint8Array | DataView;
+  /** The template object that defines the structure and default values */
   template: T;
   private accessPropertiesByDotNotation: boolean;
   private autoReconcile: boolean;
 
+  /**
+   * Creates a new Store instance.
+   * @param options Configuration options for the store
+   * @throws {Error} If encryption is enabled but the key is invalid
+   * @example
+   * ```typescript
+   * const store = new Store({
+   *   name: 'config',
+   *   template: { theme: 'light' },
+   *   cwd: '/custom/path',      // optional
+   *   encryptionKey: 'secret',  // optional
+   *   autoReconcile: true       // optional
+   * });
+   * ```
+   */
   constructor(options: StoreOptions<T>) {
     this.template = options.template;
     this.encryptionKey = options.encryptionKey;
@@ -51,7 +100,12 @@ export class Store<T extends Record<string, any>> {
 
   /**
    * Manually reconcile the current data with the template.
-   * This is useful when autoReconcile is disabled or when you want to force a reconciliation.
+   * This resets all values to their template defaults.
+   * @example
+   * ```typescript
+   * // Reset all values to template defaults
+   * store.reconcile();
+   * ```
    */
   reconcile(): void {
     this.data = { ...this.template };
@@ -192,6 +246,19 @@ export class Store<T extends Record<string, any>> {
     current[keys[keys.length - 1]] = value;
   }
 
+  /**
+   * Get a value from the store.
+   * @param key The key or path to get
+   * @returns The value at the specified key/path, or undefined if not found
+   * @example
+   * ```typescript
+   * // Direct access
+   * const theme = store.get('theme');
+   * 
+   * // Dot notation (if enabled)
+   * const primary = store.get('theme.colors.primary');
+   * ```
+   */
   get<K extends keyof T>(key: K): T[K];
   get<P extends Path<T>>(path: P): PathValue<T, P>;
   get(keyOrPath: string): any {
@@ -201,6 +268,19 @@ export class Store<T extends Record<string, any>> {
     return this.data[keyOrPath as keyof T];
   }
 
+  /**
+   * Set a value in the store.
+   * @param key The key or path to set
+   * @param value The value to set
+   * @example
+   * ```typescript
+   * // Direct access
+   * store.set('theme', { dark: true });
+   * 
+   * // Dot notation (if enabled)
+   * store.set('theme.colors.primary', '#000000');
+   * ```
+   */
   set<K extends keyof T>(key: K, value: T[K]): void;
   set<P extends Path<T>>(path: P, value: PathValue<T, P>): void;
   set(keyOrPath: string, value: any): void {
@@ -212,6 +292,17 @@ export class Store<T extends Record<string, any>> {
     this.write();
   }
 
+  /**
+   * Set multiple values at once.
+   * @param data Partial data to set
+   * @example
+   * ```typescript
+   * store.setAll({
+   *   theme: { dark: true },
+   *   notifications: { enabled: false }
+   * });
+   * ```
+   */
   setAll(data: Partial<T>): void {
     this.data = this.reconcileWithTemplate({
       ...this.data,
@@ -220,6 +311,18 @@ export class Store<T extends Record<string, any>> {
     this.write();
   }
 
+  /**
+   * Delete a value from the store by resetting it to its template value.
+   * @param key The key or path to delete
+   * @example
+   * ```typescript
+   * // Reset theme to template defaults
+   * store.delete('theme');
+   * 
+   * // Reset specific nested value
+   * store.delete('theme.colors.primary');
+   * ```
+   */
   delete<K extends keyof T>(key: K): void;
   delete<P extends Path<T>>(path: P): void;
   delete(keyOrPath: string): void {
@@ -232,15 +335,41 @@ export class Store<T extends Record<string, any>> {
     this.write();
   }
 
+  /**
+   * Reset all values to their template defaults.
+   * @example
+   * ```typescript
+   * // Reset entire store to template
+   * store.clear();
+   * ```
+   */
   clear(): void {
     this.data = { ...this.template };
     this.write();
   }
 
+  /**
+   * Get the entire store data.
+   * @returns The current store data
+   * @example
+   * ```typescript
+   * const data = store.store;
+   * console.log(data);
+   * ```
+   */
   get store(): T {
     return this.data;
   }
 
+  /**
+   * Get the full path to the store file.
+   * @returns The absolute path to the store file
+   * @example
+   * ```typescript
+   * console.log(store.path);
+   * // => /Users/username/Library/Application Support/your-app/config.json
+   * ```
+   */
   get path(): string {
     return this.filePath;
   }
