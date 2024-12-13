@@ -1,0 +1,37 @@
+{
+  "name": "electron-datastore",
+  "version": "1.0.0",
+  "description": "Simple and secure electron store with template-based data reconciliation",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "node --test --require ts-node/register __tests__/**/*.test.ts",
+    "test:watch": "node --test --watch --require ts-node/register __tests__/**/*.test.ts"
+  },
+  "keywords": [
+    "electron",
+    "store",
+    "persistence",
+    "storage",
+    "data",
+    "json",
+    "template",
+    "encryption"
+  ],
+  "author": "iamEvan",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "electron": "^28.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "peerDependencies": {
+    "electron": ">=11.0.0"
+  }
+}
